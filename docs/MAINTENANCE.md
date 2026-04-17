@@ -1,4 +1,4 @@
-# ManutenÁ„o R·pida
+# Manuten√ß√£o R√°pida
 
 ## Onde editar
 
@@ -17,16 +17,16 @@ Formato:
 
 ## Avatares
 
-Cada item do array `AVATARS` È uma funÁ„o `(c) => "<svg...>"`.
+Cada item do array `AVATARS` √© uma fun√ß√£o `(c) => "<svg...>"`.
 
 ## UX atual
 
-- Partida r·pida no menu
-- Temporizador opcional para discuss„o e preparaÁ„o de voto
-- VotaÁ„o estruturada com aplicaÁ„o autom·tica de pontos
+- Partida r√°pida no menu
+- Temporizador opcional para discuss√£o e prepara√ß√£o de voto
+- Vota√ß√£o estruturada com aplica√ß√£o autom√°tica de pontos
 
-## Regras pr·ticas
+## Regras pr√°ticas
 
-- Evite perguntas iguais ou Ûbvias.
+- Evite perguntas iguais ou √≥bvias.
 - Mantenha tom parecido entre `normal` e `impostor`.
 - Teste com 3-8 jogadores antes do deploy.

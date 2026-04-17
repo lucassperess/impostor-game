@@ -6,30 +6,30 @@ Jogo social em React onde todos recebem uma pergunta parecida, exceto 1 impostor
 
 - `impostor-game.jsx`: wrapper de compatibilidade (reexport)
 - `src/impostor-game.jsx`: orquestrador principal do jogo
-- `src/data/`: perguntas, avatares e dados de ·udio
-- `src/hooks/`: hooks reutiliz·veis (`useMusic`)
+- `src/data/`: perguntas, avatares e dados de √°udio
+- `src/hooks/`: hooks reutiliz√°veis (`useMusic`)
 - `src/components/`: componentes de UI
 - `src/ui/`: tema, tokens e estilos globais
-- `src/utils/`: utilit·rios e storage keys
-- `docs/`: documentaÁ„o de manutenÁ„o
+- `src/utils/`: utilit√°rios e storage keys
+- `docs/`: documenta√ß√£o de manuten√ß√£o
 
 ## Melhorias de gameplay
 
-- Partida r·pida direto no menu
+- Partida r√°pida direto no menu
 - Modo com temporizador opcional
-- VotaÁ„o estruturada com aplicaÁ„o autom·tica de pontos
-- Ajuste manual opcional de pontuaÁ„o
+- Vota√ß√£o estruturada com aplica√ß√£o autom√°tica de pontos
+- Ajuste manual opcional de pontua√ß√£o
 
-## Como atualizar conte˙do (via cÛdigo)
+## Como atualizar conte√∫do (via c√≥digo)
 
 Edite em `src/data/`:
 
 - `rounds.js`: banco de perguntas
 - `avatars.js`: templates SVG dos avatares
 
-Depois faÁa commit e deploy.
+Depois fa√ßa commit e deploy.
 
-## ObservaÁıes
+## Observa√ß√µes
 
-- O jogo n„o expıe painel de ediÁ„o para usu·rios finais.
-- PreferÍncias locais (jogadores/rodadas/mute/timer) ficam no `localStorage` do navegador.
+- O jogo n√£o exp√µe painel de edi√ß√£o para usu√°rios finais.
+- Prefer√™ncias locais (jogadores/rodadas/mute/timer) ficam no `localStorage` do navegador.

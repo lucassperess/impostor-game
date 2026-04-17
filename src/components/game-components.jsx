@@ -30,7 +30,7 @@ export function PauseOverlay({scores,names,avatars,onResume,onQuit,muted,onToggl
         <span style={{fontFamily:DF,fontWeight:700,fontSize:20}}>{scores[i]}</span>
       </div>)}
     </div>
-    <Btn bg={W} color={muted?"#ccc":MID} shadow={BD} style={{padding:"10px 20px",fontSize:14,marginBottom:20,display:"flex",alignItems:"center",gap:8}} onClick={onToggleMute}>{muted?<SndOff/>:<SndOn/>}{muted?"Música desligada":"Música ligada"}</Btn>
+    <Btn bg={W} color={muted?"#ccc":MID} shadow={BD} style={{padding:"10px 20px",fontSize:14,marginBottom:20,display:"flex",alignItems:"center",gap:8}} onClick={onToggleMute}>{muted?<SndOff/>:<SndOn/>}{muted?"MÃºsica desligada":"MÃºsica ligada"}</Btn>
     <div style={{display:"flex",gap:12}}>
       <Btn bg="#A8D5BA" color="#fff" shadow="#6EA586" style={{padding:"14px 32px",fontSize:16}} onClick={onResume}>? Continuar</Btn>
       <Btn bg={W} color="#F28B82" shadow={BD} style={{padding:"14px 32px",fontSize:16}} onClick={onQuit}>Sair</Btn>
@@ -43,14 +43,14 @@ export const Card = memo(function Card({playerIndex,name,avatar,color,colorDark,
   return <div className="card-enter" style={{perspective:"900px",width:"100%",maxWidth:260,height:210,cursor:tap?"pointer":"default",userSelect:"none",opacity:done?0.5:lock?0.55:1,transition:"opacity 0.3s",animationDelay:`${delay}s`}} onClick={()=>{if(tap)onOpen(playerIndex);}}>
     <div style={{width:"100%",height:"100%",position:"relative",transformStyle:"preserve-3d",transition:"transform 0.7s cubic-bezier(.4,0,.2,1)",transform:flip?"rotateY(180deg)":"rotateY(0deg)"}}>
       <div style={{position:"absolute",inset:0,backfaceVisibility:"hidden",borderRadius:18,background:done?"#F0EBE3":`${cardPat(color)},${color}`,border:done?"2px dashed #D5CBBD":`3px solid ${colorDark}`,boxShadow:done?"none":`0 4px 0 ${colorDark},0 6px 16px rgba(0,0,0,0.07)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,overflow:"hidden"}}>
-        {done?<><div style={{background:"#A8D5BA",borderRadius:"50%",border:"2px solid #6EA586",overflow:"hidden"}}><AvatarSVG index={avatar} color="#A8D5BA" size={48}/></div><span style={{fontFamily:DF,fontWeight:600,fontSize:13,color:"#6EA586"}}>{name}</span><span style={{fontSize:11,color:LT}}>Já leu</span></>
+        {done?<><div style={{background:"#A8D5BA",borderRadius:"50%",border:"2px solid #6EA586",overflow:"hidden"}}><AvatarSVG index={avatar} color="#A8D5BA" size={48}/></div><span style={{fontFamily:DF,fontWeight:600,fontSize:13,color:"#6EA586"}}>{name}</span><span style={{fontSize:11,color:LT}}>JÃ¡ leu</span></>
         :<><div style={{borderRadius:"50%",border:lock?"2px solid #D5CBBD":`3px solid ${colorDark}`,overflow:"hidden",background:lock?"#E8DDD0":"transparent",animation:tap?"float 3s ease-in-out infinite":"none"}}><AvatarSVG index={avatar} color={lock?"#D5CBBD":color} size={52}/></div><span style={{fontFamily:DF,color:lock?LT:"#fff",fontWeight:600,fontSize:14,textShadow:lock?"none":"0 1px 2px rgba(0,0,0,0.15)"}}>{name}</span><span style={{fontSize:11,color:lock?"#C5B8A8":"#ffffffcc"}}>{lock?"Aguardando...":"Toque para virar"}</span></>}
       </div>
       <div style={{position:"absolute",inset:0,backfaceVisibility:"hidden",transform:"rotateY(180deg)",borderRadius:18,background:W,border:`3px solid ${colorDark}`,boxShadow:`0 4px 0 ${colorDark},0 6px 16px rgba(0,0,0,0.07)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"20px 16px",gap:10}}>
         <div style={{position:"absolute",top:0,left:20,right:20,height:6,background:color,borderRadius:"0 0 4px 4px"}}/>
         <span style={{fontFamily:DF,fontSize:11,fontWeight:600,color:colorDark,textTransform:"uppercase",letterSpacing:1.5}}>{name}</span>
         <p style={{color:INK,fontSize:14,fontWeight:600,textAlign:"center",lineHeight:1.5,margin:0,fontFamily:BF}}>{question}</p>
-        <Btn bg={color} color="#fff" shadow={colorDark} style={{padding:"8px 20px",fontSize:13}} onClick={e=>{e.stopPropagation();onDone(playerIndex);}}>? Já li</Btn>
+        <Btn bg={color} color="#fff" shadow={colorDark} style={{padding:"8px 20px",fontSize:13}} onClick={e=>{e.stopPropagation();onDone(playerIndex);}}>? JÃ¡ li</Btn>
       </div>
     </div>
   </div>;
