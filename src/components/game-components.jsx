@@ -8,11 +8,11 @@ const SICONS=[EyeI,ChatI,QI,VI,SI];
 export function TopBar({onPause,onBack,backLabel,roundInfo,roundNum,totalRounds,muted,onToggleMute}){
   return <div style={{width:"100%",maxWidth:660,boxSizing:"border-box",padding:"14px 8px 6px"}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-      <Btn bg={W} color={MID} shadow={BD} style={{padding:"7px 14px",fontSize:13}} onClick={onBack}>? {backLabel}</Btn>
+      <Btn bg={W} color={MID} shadow={BD} style={{padding:"7px 14px",fontSize:13}} onClick={onBack}>← {backLabel}</Btn>
       {roundInfo&&<span style={{fontFamily:DF,fontSize:13,fontWeight:600,color:LT,letterSpacing:1.5,textTransform:"uppercase"}}>{roundInfo}</span>}
       <div style={{display:"flex",gap:6}}>
         <Btn bg={W} color={muted?"#ccc":MID} shadow={BD} style={{padding:"7px 10px",fontSize:13,display:"flex",alignItems:"center"}} onClick={onToggleMute}>{muted?<SndOff/>:<SndOn/>}</Btn>
-        <Btn bg={W} color={MID} shadow={BD} style={{padding:"7px 14px",fontSize:13}} onClick={onPause}>?</Btn>
+        <Btn bg={W} color={MID} shadow={BD} style={{padding:"7px 14px",fontSize:13}} onClick={onPause}>⏸</Btn>
       </div>
     </div>
     {totalRounds>0&&<div style={{height:5,borderRadius:3,background:BD,overflow:"hidden"}}><div style={{height:"100%",borderRadius:3,background:"#F7C873",width:`${(roundNum/totalRounds)*100}%`,transition:"width 0.5s ease"}}/></div>}
@@ -32,7 +32,7 @@ export function PauseOverlay({scores,names,avatars,onResume,onQuit,muted,onToggl
     </div>
     <Btn bg={W} color={muted?"#ccc":MID} shadow={BD} style={{padding:"10px 20px",fontSize:14,marginBottom:20,display:"flex",alignItems:"center",gap:8}} onClick={onToggleMute}>{muted?<SndOff/>:<SndOn/>}{muted?"Música desligada":"Música ligada"}</Btn>
     <div style={{display:"flex",gap:12}}>
-      <Btn bg="#A8D5BA" color="#fff" shadow="#6EA586" style={{padding:"14px 32px",fontSize:16}} onClick={onResume}>? Continuar</Btn>
+      <Btn bg="#A8D5BA" color="#fff" shadow="#6EA586" style={{padding:"14px 32px",fontSize:16}} onClick={onResume}>▶ Continuar</Btn>
       <Btn bg={W} color="#F28B82" shadow={BD} style={{padding:"14px 32px",fontSize:16}} onClick={onQuit}>Sair</Btn>
     </div>
   </div>;
@@ -50,7 +50,7 @@ export const Card = memo(function Card({playerIndex,name,avatar,color,colorDark,
         <div style={{position:"absolute",top:0,left:20,right:20,height:6,background:color,borderRadius:"0 0 4px 4px"}}/>
         <span style={{fontFamily:DF,fontSize:11,fontWeight:600,color:colorDark,textTransform:"uppercase",letterSpacing:1.5}}>{name}</span>
         <p style={{color:INK,fontSize:14,fontWeight:600,textAlign:"center",lineHeight:1.5,margin:0,fontFamily:BF}}>{question}</p>
-        <Btn bg={color} color="#fff" shadow={colorDark} style={{padding:"8px 20px",fontSize:13}} onClick={e=>{e.stopPropagation();onDone(playerIndex);}}>? Já li</Btn>
+        <Btn bg={color} color="#fff" shadow={colorDark} style={{padding:"8px 20px",fontSize:13}} onClick={e=>{e.stopPropagation();onDone(playerIndex);}}>✓ Já li</Btn>
       </div>
     </div>
   </div>;

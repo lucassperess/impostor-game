@@ -79,8 +79,6 @@ export default function ImpostorGame(){
   const[muted,setMuted]=useState(()=>loadStoredBoolean(STORAGE_KEYS.muted,false));
   const[stepTimer,setStepTimer]=useState(null);
 
-  const[votes,setVotes]=useState([]);
-  const[votesApplied,setVotesApplied]=useState(false);
 
   const scorePopTimeoutRef = useRef(null);
   const { start: startMusic, stop: stopMusic, toggleMute: toggleMusicMute } = useMusic();
@@ -106,9 +104,6 @@ export default function ImpostorGame(){
     return base.length>0?base.sort((a,b)=>a-b):[3];
   },[maxRounds]);
 
-  const votePoints=useMemo(()=>votes.map((target)=>target===impIdx?1:0),[votes,impIdx]);
-  const voteReady=useMemo(()=>votes.length===N&&votes.every((v)=>Number.isInteger(v)&&v>=0&&v<N),[votes,N]);
-
   const toggleMute=useCallback(()=>{
     const next=!muted;
     setMuted(next);
@@ -120,8 +115,6 @@ export default function ImpostorGame(){
     setImpIdx(Math.floor(Math.random()*N));
     setCardStates(Array(N).fill("waiting"));
     setCardOrder(shuffle([...Array(N).keys()]));
-    setVotes(Array(N).fill(-1));
-    setVotesApplied(false);
     setStep(STEP.READ);
     setShowCountdown(false);
     setRevealReady(false);
@@ -225,12 +218,6 @@ export default function ImpostorGame(){
   const addPt=useCallback((i)=>{setScores(s=>{const n=[...s];n[i]++;return n;});flashScore(i);},[flashScore]);
   const rmPt=useCallback((i)=>{setScores(s=>{const n=[...s];n[i]=Math.max(0,n[i]-1);return n;});flashScore(i);},[flashScore]);
 
-  const applyVotes=useCallback(()=>{
-    if(!voteReady||votesApplied) return;
-    setScores((prev)=>prev.map((score,idx)=>score+votePoints[idx]));
-    setVotesApplied(true);
-  },[voteReady,votesApplied,votePoints]);
-
   const nextRound=useCallback(()=>{
     setRoundHistory(h=>[...h,{round:currentRound,scores:[...scores]}]);
     if(currentRound+1>=totalRounds)setPhase(PHASE.RESULT);
@@ -261,7 +248,7 @@ export default function ImpostorGame(){
     <div style={{textAlign:"center",maxWidth:420,animation:"fadeUp 0.5s ease"}}>
       <div style={{background:W,borderRadius:24,padding:"36px 28px 28px",marginBottom:28,border:`3px solid ${BD}`,boxShadow:`0 6px 0 ${BD},0 8px 24px rgba(0,0,0,0.05)`,position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:-4,left:"50%",transform:"translateX(-50%) rotate(-2deg)",width:80,height:28,background:"#F7C873",borderRadius:4,opacity:0.85}}/>
-        <div style={{marginBottom:16,marginTop:8}}><SI/></div>
+        <div style={{marginBottom:16,marginTop:8}}><SI size={80}/></div>
         <h1 style={{fontFamily:"'Fredoka',sans-serif",fontSize:42,margin:"0 0 6px",color:INK}}>Impostor</h1>
         <p style={{color:MID,fontSize:14,lineHeight:1.6,margin:0,fontWeight:600}}>Todos recebem a mesma pergunta - menos um.<br/>Descubram quem respondeu outra coisa!</p>
       </div>
@@ -279,7 +266,7 @@ export default function ImpostorGame(){
       </div>
       <p style={{color:LT,fontSize:11,margin:"-8px 0 16px"}}>{maxRounds} perguntas disponiveis no codigo</p>
       <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
-        <Btn bg="#F28B82" color="#fff" shadow="#C0635E" style={{padding:"16px 30px",fontSize:18}} onClick={goToNames}>Escolher Nomes ?</Btn>
+        <Btn bg="#F28B82" color="#fff" shadow="#C0635E" style={{padding:"16px 30px",fontSize:18}} onClick={goToNames}>Escolher Nomes →</Btn>
         <Btn bg="#81BFDA" color="#fff" shadow="#5A8FA8" style={{padding:"16px 24px",fontSize:18}} onClick={quickStart}>Partida Rápida</Btn>
       </div>
     </div>
@@ -288,7 +275,7 @@ export default function ImpostorGame(){
   if(phase===PHASE.NAMES){return <div style={{...pgStyle,justifyContent:"center",padding:24}}>
     <Fonts/><GlobalCSS/>
     <div style={{textAlign:"center",maxWidth:420,width:"100%",animation:"fadeUp 0.4s ease"}}>
-      <Btn bg={W} color={MID} shadow={BD} style={{padding:"8px 16px",fontSize:13,marginBottom:24}} onClick={()=>setPhase(PHASE.MENU)}>? Menu</Btn>
+      <Btn bg={W} color={MID} shadow={BD} style={{padding:"8px 16px",fontSize:13,marginBottom:24}} onClick={()=>setPhase(PHASE.MENU)}>← Menu</Btn>
       <h2 style={{fontFamily:"'Fredoka',sans-serif",fontSize:26,margin:"0 0 6px"}}>Quem vai jogar?</h2>
       <p style={{color:MID,fontSize:13,margin:"0 0 6px",fontWeight:600}}>{names.length} jogadores · {roundCount} rodadas</p>
       <p style={{color:LT,fontSize:11,margin:"0 0 8px"}}>Toque no avatar para trocar</p>
@@ -303,7 +290,7 @@ export default function ImpostorGame(){
         </div>)}
       </div>
       {!ok&&<p style={{color:"#C0635E",fontSize:12,fontWeight:700,margin:"0 0 12px"}}>{nameValidationMsg}</p>}
-      <Btn bg={ok?"#A8D5BA":"#E8DDD0"} color={ok?"#fff":LT} shadow={ok?"#6EA586":"#D5CBBD"} style={{padding:"14px 40px",fontSize:17,cursor:ok?"pointer":"not-allowed"}} onClick={ok?startGame:undefined}>Iniciar Partida ?</Btn>
+      <Btn bg={ok?"#A8D5BA":"#E8DDD0"} color={ok?"#fff":LT} shadow={ok?"#6EA586":"#D5CBBD"} style={{padding:"14px 40px",fontSize:17,cursor:ok?"pointer":"not-allowed"}} onClick={ok?startGame:undefined}>▶ Iniciar Partida</Btn>
     </div>
   </div>;}
 
@@ -356,24 +343,7 @@ export default function ImpostorGame(){
           <p style={{margin:0,fontFamily:"'Fredoka',sans-serif",fontSize:30,fontWeight:700,color:pcd(impIdx)}}>{names[impIdx]}</p>
         </div>
 
-        <div style={{background:W,borderRadius:14,padding:16,marginBottom:16,border:`2px solid ${BD}`}}>
-          <p style={{fontFamily:"'Fredoka',sans-serif",fontSize:13,color:MID,margin:"0 0 10px"}}>Votação estruturada</p>
-          <div style={{display:"grid",gap:8}}>
-            {names.map((name,i)=><div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,alignItems:"center"}}>
-              <span style={{textAlign:"left",fontWeight:700,fontSize:13}}>{name} votou em</span>
-              <select value={votes[i] ?? -1} onChange={(e)=>{const next=[...votes];next[i]=Number(e.target.value);setVotes(next);}} style={{padding:"8px 10px",borderRadius:10,border:`2px solid ${BD}`,fontWeight:700}}>
-                <option value={-1}>Escolher</option>
-                {names.map((target,j)=><option value={j} key={j}>{target}</option>)}
-              </select>
-            </div>)}
-          </div>
-          <div style={{marginTop:12,display:"flex",justifyContent:"center",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            {!votesApplied&&<Btn bg={voteReady?"#A8D5BA":"#E8DDD0"} color={voteReady?"#fff":LT} shadow={voteReady?"#6EA586":"#D5CBBD"} style={{padding:"10px 18px",fontSize:14,cursor:voteReady?"pointer":"not-allowed"}} onClick={voteReady?applyVotes:undefined}>Aplicar Pontos Automáticos</Btn>}
-            {votesApplied&&<span style={{fontSize:12,fontWeight:700,color:"#6EA586"}}>Pontos aplicados automaticamente.</span>}
-          </div>
-        </div>
-
-        <p style={{fontSize:13,color:MID,marginBottom:10,fontFamily:"'Fredoka',sans-serif",fontWeight:600}}>Ajuste manual (opcional)</p>
+        <p style={{fontSize:13,color:MID,marginBottom:10,fontFamily:"'Fredoka',sans-serif",fontWeight:600}}>Ajuste os pontos de quem acertou</p>
         <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:24,maxHeight:260,overflowY:"auto"}}>
           {names.map((name,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 10px",borderRadius:12,background:W,border:`2px solid ${pc(i)}`}}>
             <div style={{display:"flex",alignItems:"center",gap:6,flex:1}}><AvatarSVG index={avatars[i]} color={pc(i)} size={24}/><span style={{fontWeight:700,fontSize:13}}>{name}</span></div>
@@ -397,7 +367,7 @@ export default function ImpostorGame(){
           <h2 style={{fontFamily:"'Fredoka',sans-serif",fontSize:28,margin:"0 0 20px",color:INK}}>Fim de Jogo!</h2>
           {sortedScores.map(({score,index},rank)=><div key={index} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",borderRadius:14,marginBottom:6,background:rank===0?`${pc(index)}30`:"#FBF7F0",border:rank===0?`2px solid ${pc(index)}`:`2px solid ${BD}`,boxShadow:rank===0?`0 3px 0 ${pcd(index)}`:"none",animation:"fadeUp 0.4s ease",animationDelay:`${rank*0.1}s`,animationFillMode:"both"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:20,minWidth:24}}>{rank<3?["??","??","??"][rank]:""}</span>
+              <span style={{fontSize:20,minWidth:24}}>{rank<3?["🥇","🥈","🥉"][rank]:""}</span>
               <AvatarSVG index={avatars[index]} color={pc(index)} size={30}/>
               <span style={{fontWeight:700,fontSize:15,color:INK}}>{names[index]}</span>
             </div>
