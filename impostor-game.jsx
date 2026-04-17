@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import * as Tone from "tone";
 
 /* ═══════════════════════════════════════════
    PERGUNTAS — calibradas, não mexer
    ═══════════════════════════════════════════ */
-const ROUNDS = [
+const DEFAULT_ROUNDS = [
   { normal: "Qual lugar você mais gosta de ir no final de semana?", impostor: "Qual lugar você mais frequenta no final de semana?" },
   { normal: "Qual é a primeira coisa que você faz quando acorda?", impostor: "Qual é a última coisa que você faz antes de dormir?" },
   { normal: "Qual comida de conforto você come quando está triste?", impostor: "Qual comida você come pra comemorar algo?" },
@@ -37,6 +37,17 @@ const ROUNDS = [
   { normal: "Qual é o seu prazer culposo?", impostor: "Qual é a coisa que você faz que ninguém sabe?" },
   { normal: "O que te convence a ir numa festa?", impostor: "Qual é a primeira coisa que você faz quando chega numa festa?" },
 ];
+// Para atualizar perguntas, edite o array DEFAULT_ROUNDS via codigo (deploy).
+
+const STORAGE_KEYS = {
+  playerCount: "impostor.playerCount.v1",
+  roundCount: "impostor.roundCount.v1",
+  muted: "impostor.muted.v1",
+};
+
+function canUseStorage() {
+  return typeof window !== "undefined" && !!window.localStorage;
+}
 
 /* ═══════════════════════════════════════════
    UTILS
@@ -67,11 +78,16 @@ const AVATARS = [
   (c) => `<circle cx="20" cy="20" r="16" fill="${c}" stroke="${hexToRgba(c,0.5)}" stroke-width="2"/><path d="M11 14l6 6m0-6l-6 6" stroke="#3D3024" stroke-width="2" stroke-linecap="round"/><path d="M23 14l6 6m0-6l-6 6" stroke="#3D3024" stroke-width="2" stroke-linecap="round"/><path d="M15 26c2 2 8 2 10 0" stroke="#3D3024" stroke-width="2" fill="none" stroke-linecap="round"/>`,
   (c) => `<circle cx="20" cy="20" r="16" fill="${c}" stroke="${hexToRgba(c,0.5)}" stroke-width="2"/><path d="M10 18c2-2 6-2 8 0" stroke="#3D3024" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 18c2-2 6-2 8 0" stroke="#3D3024" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M16 26c2 1.5 6 1.5 8 0" stroke="#3D3024" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
   (c) => `<circle cx="20" cy="20" r="16" fill="${c}" stroke="${hexToRgba(c,0.5)}" stroke-width="2"/><path d="M10 14l5 2" stroke="#3D3024" stroke-width="2" stroke-linecap="round"/><path d="M30 14l-5 2" stroke="#3D3024" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="19" r="2.5" fill="#3D3024"/><circle cx="26" cy="19" r="2.5" fill="#3D3024"/><path d="M15 26c2.5 2 7.5 2 10 0" stroke="#3D3024" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  (c) => `<circle cx="20" cy="20" r="16" fill="${c}" stroke="${hexToRgba(c,0.5)}" stroke-width="2"/><circle cx="14" cy="17" r="2.3" fill="#3D3024"/><circle cx="26" cy="17" r="2.3" fill="#3D3024"/><path d="M13 12c1.5-1 3-1.5 4.5-1.5M22.5 10.5c1.5 0 3 .5 4.5 1.5" stroke="#3D3024" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M14.5 25c3.5 2.5 7.5 2.5 11 0" stroke="#3D3024" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  (c) => `<circle cx="20" cy="20" r="16" fill="${c}" stroke="${hexToRgba(c,0.5)}" stroke-width="2"/><path d="M11.5 16h5M23.5 16h5" stroke="#3D3024" stroke-width="2.2" stroke-linecap="round"/><circle cx="17.5" cy="24" r="1.8" fill="#3D3024"/><circle cx="22.5" cy="24" r="1.8" fill="#3D3024"/><path d="M16 27h8" stroke="#3D3024" stroke-width="1.8" stroke-linecap="round"/>`,
+  (c) => `<circle cx="20" cy="20" r="16" fill="${c}" stroke="${hexToRgba(c,0.5)}" stroke-width="2"/><ellipse cx="14.5" cy="17" rx="2.5" ry="2.1" fill="#3D3024"/><ellipse cx="25.5" cy="17" rx="2.5" ry="2.1" fill="#3D3024"/><path d="M13.5 24.5c2.5 4 10.5 4 13 0" stroke="#3D3024" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="20" cy="23.5" r="1.3" fill="#3D3024"/>`,
+  (c) => `<circle cx="20" cy="20" r="16" fill="${c}" stroke="${hexToRgba(c,0.5)}" stroke-width="2"/><path d="M12 18l4-2 4 2M20 18l4-2 4 2" stroke="#3D3024" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M14 26c2-3 10-3 12 0" stroke="#3D3024" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M19 20h2v3h-2z" fill="#3D3024"/>`,
 ];
 
-function AvatarSVG({ index, color, size = 40 }) {
-  return <svg width={size} height={size} viewBox="0 0 40 40" dangerouslySetInnerHTML={{ __html: AVATARS[index % AVATARS.length](color) }} />;
-}
+const AvatarSVG = memo(function AvatarSVG({ index, color, size = 40 }) {
+  const markup = useMemo(() => AVATARS[index % AVATARS.length](color), [index, color]);
+  return <svg width={size} height={size} viewBox="0 0 40 40" dangerouslySetInnerHTML={{ __html: markup }} />;
+});
 
 /* ═══════════════════════════════════════════
    MUSIC — Tone.js chiptune (ref-based)
@@ -194,7 +210,18 @@ const SLABELS=["Ler","Discutir","Pergunta","Votar","Resultado"];
 
 function Btn({bg,color,shadow,children,style,...p}){return <button className="pbtn" style={{background:bg,color,boxShadow:`0 4px 0 ${shadow},0 6px 12px rgba(0,0,0,0.07)`,...style}} {...p}>{children}</button>;}
 
-function Confetti(){const ps=Array(45).fill(0).map(()=>({l:Math.random()*100,d:Math.random()*2,t:2+Math.random()*2,c:PAL[Math.floor(Math.random()*PAL.length)],s:5+Math.random()*9,r:Math.random()*360}));return <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1000,overflow:"hidden"}}>{ps.map((p,i)=><div key={i} style={{position:"absolute",top:-20,left:`${p.l}%`,width:p.s,height:p.s,background:p.c,borderRadius:p.s>10?"50%":"2px",animation:`confetti ${p.t}s ${p.d}s ease-in forwards`,transform:`rotate(${p.r}deg)`}}/>)}</div>;}
+const Confetti = memo(function Confetti(){
+  const pieces = useMemo(() =>
+    Array(45).fill(0).map(() => ({
+      l: Math.random() * 100,
+      d: Math.random() * 2,
+      t: 2 + Math.random() * 2,
+      c: PAL[Math.floor(Math.random() * PAL.length)],
+      s: 5 + Math.random() * 9,
+      r: Math.random() * 360,
+    })), []);
+  return <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1000,overflow:"hidden"}}>{pieces.map((p,i)=><div key={i} style={{position:"absolute",top:-20,left:`${p.l}%`,width:p.s,height:p.s,background:p.c,borderRadius:p.s>10?"50%":"2px",animation:`confetti ${p.t}s ${p.d}s ease-in forwards`,transform:`rotate(${p.r}deg)`}}/>)}</div>;
+});
 
 function GlobalCSS() { return <style>{CSS}</style>; }
 
@@ -234,9 +261,9 @@ function PauseOverlay({scores,names,avatars,onResume,onQuit,muted,onToggleMute})
   </div>;
 }
 
-function Card({name,avatar,color,colorDark,question,state,onOpen,onDone,delay}){
+const Card = memo(function Card({playerIndex,name,avatar,color,colorDark,question,state,onOpen,onDone,delay}){
   const flip=state==="open",done=state==="done",lock=state==="locked",tap=state==="waiting";
-  return <div className="card-enter" style={{perspective:"900px",width:"100%",maxWidth:260,height:210,cursor:tap?"pointer":"default",userSelect:"none",opacity:done?0.5:lock?0.55:1,transition:"opacity 0.3s",animationDelay:`${delay}s`}} onClick={()=>{if(tap)onOpen();}}>
+  return <div className="card-enter" style={{perspective:"900px",width:"100%",maxWidth:260,height:210,cursor:tap?"pointer":"default",userSelect:"none",opacity:done?0.5:lock?0.55:1,transition:"opacity 0.3s",animationDelay:`${delay}s`}} onClick={()=>{if(tap)onOpen(playerIndex);}}>
     <div style={{width:"100%",height:"100%",position:"relative",transformStyle:"preserve-3d",transition:"transform 0.7s cubic-bezier(.4,0,.2,1)",transform:flip?"rotateY(180deg)":"rotateY(0deg)"}}>
       <div style={{position:"absolute",inset:0,backfaceVisibility:"hidden",borderRadius:18,background:done?"#F0EBE3":`${cardPat(color)},${color}`,border:done?"2px dashed #D5CBBD":`3px solid ${colorDark}`,boxShadow:done?"none":`0 4px 0 ${colorDark},0 6px 16px rgba(0,0,0,0.07)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,overflow:"hidden"}}>
         {done?<><div style={{background:"#A8D5BA",borderRadius:"50%",border:"2px solid #6EA586",overflow:"hidden"}}><AvatarSVG index={avatar} color="#A8D5BA" size={48}/></div><span style={{fontFamily:DF,fontWeight:600,fontSize:13,color:"#6EA586"}}>{name}</span><span style={{fontSize:11,color:LT}}>Já leu</span></>
@@ -246,11 +273,11 @@ function Card({name,avatar,color,colorDark,question,state,onOpen,onDone,delay}){
         <div style={{position:"absolute",top:0,left:20,right:20,height:6,background:color,borderRadius:"0 0 4px 4px"}}/>
         <span style={{fontFamily:DF,fontSize:11,fontWeight:600,color:colorDark,textTransform:"uppercase",letterSpacing:1.5}}>{name}</span>
         <p style={{color:INK,fontSize:14,fontWeight:600,textAlign:"center",lineHeight:1.5,margin:0,fontFamily:BF}}>{question}</p>
-        <Btn bg={color} color="#fff" shadow={colorDark} style={{padding:"8px 20px",fontSize:13}} onClick={e=>{e.stopPropagation();onDone();}}>✓ Já li</Btn>
+        <Btn bg={color} color="#fff" shadow={colorDark} style={{padding:"8px 20px",fontSize:13}} onClick={e=>{e.stopPropagation();onDone(playerIndex);}}>✓ Já li</Btn>
       </div>
     </div>
   </div>;
-}
+});
 
 function StepBar({currentStep}){
   return <div style={{display:"flex",alignItems:"center",width:"100%",maxWidth:440,margin:"0 auto 18px",background:W,borderRadius:14,padding:"5px 8px",border:`2px solid ${BD}`,boxShadow:`0 2px 0 ${BD}`}}>
@@ -280,8 +307,16 @@ function CountdownReveal({onDone}){
    ═══════════════════════════════════════════ */
 export default function ImpostorGame(){
   const[phase,setPhase]=useState("menu");
-  const[playerCount,setPlayerCount]=useState(4);
-  const[roundCount,setRoundCount]=useState(10);
+  const[playerCount,setPlayerCount]=useState(()=>{
+    if(!canUseStorage()) return 4;
+    const raw=Number(window.localStorage.getItem(STORAGE_KEYS.playerCount));
+    return Number.isFinite(raw)&&raw>=3&&raw<=8?raw:4;
+  });
+  const[roundCount,setRoundCount]=useState(()=>{
+    if(!canUseStorage()) return 10;
+    const raw=Number(window.localStorage.getItem(STORAGE_KEYS.roundCount));
+    return Number.isFinite(raw)&&raw>=3?raw:10;
+  });
   const[names,setNames]=useState([]);
   const[avatars,setAvatars]=useState([]);
   const[currentRound,setCurrentRound]=useState(0);
@@ -296,47 +331,99 @@ export default function ImpostorGame(){
   const[showCountdown,setShowCountdown]=useState(false);
   const[revealReady,setRevealReady]=useState(false);
   const[scorePop,setScorePop]=useState(-1);
-  const[muted,setMuted]=useState(false);
+  const[muted,setMuted]=useState(()=>{
+    if(!canUseStorage()) return false;
+    return window.localStorage.getItem(STORAGE_KEYS.muted)==="1";
+  });
+  const scorePopTimeoutRef = useRef(null);
   
-  const music = useMusic();
+  const { start: startMusic, stop: stopMusic, toggleMute: toggleMusicMute } = useMusic();
 
+  const roundsBank=DEFAULT_ROUNDS;
+  const maxRounds=roundsBank.length;
   const N=names.length;
-  const allDone=cardStates.length>0&&cardStates.every(s=>s==="done");
-  const anyOpen=cardStates.some(s=>s==="open");
+  const allDone=useMemo(()=>cardStates.length>0&&cardStates.every(s=>s==="done"),[cardStates]);
+  const anyOpen=useMemo(()=>cardStates.some(s=>s==="open"),[cardStates]);
+  const openCardIndex=useMemo(()=>cardStates.findIndex(s=>s==="open"),[cardStates]);
+  const doneCards=useMemo(()=>cardStates.filter(s=>s==="done").length,[cardStates]);
   const totalRounds=roundOrder.length;
+  const roundChoices=useMemo(()=>{
+    const base=[5,10,15,20].filter((v)=>v<=maxRounds);
+    if(maxRounds>=3&&!base.includes(maxRounds)) base.push(maxRounds);
+    return base.length>0?base.sort((a,b)=>a-b):[3];
+  },[maxRounds]);
+  const cleanedNames=useMemo(()=>names.map((n)=>n.trim()),[names]);
+  const hasDuplicateNames=useMemo(()=>{
+    const used=new Set();
+    for(const name of cleanedNames){
+      const key=name.toLocaleLowerCase();
+      if(!key) continue;
+      if(used.has(key)) return true;
+      used.add(key);
+    }
+    return false;
+  },[cleanedNames]);
+  const nameValidationMsg=useMemo(()=>{
+    if(cleanedNames.some((n)=>n.length===0)) return "Preencha todos os nomes.";
+    if(hasDuplicateNames) return "Os nomes precisam ser unicos.";
+    return "";
+  },[cleanedNames,hasDuplicateNames]);
 
-  function toggleMute(){const next=!muted;setMuted(next);music.toggleMute(next);}
+  const toggleMute=useCallback(()=>{const next=!muted;setMuted(next);toggleMusicMute(next);},[muted,toggleMusicMute]);
 
   const setupRound=useCallback(()=>{if(N===0)return;setImpIdx(Math.floor(Math.random()*N));setCardStates(Array(N).fill("waiting"));setCardOrder(shuffle([...Array(N).keys()]));setStep(0);setShowCountdown(false);setRevealReady(false);},[N]);
 
-  function goToNames(){
+  const goToNames=useCallback(()=>{
     setNames(Array(playerCount).fill(""));
     setAvatars(shuffle([...Array(AVATARS.length).keys()]).slice(0,playerCount));
     setPhase("names");
-  }
-  function startGame(){
-    const rc=Math.min(roundCount,ROUNDS.length);
-    setRoundOrder(shuffle([...Array(ROUNDS.length).keys()]).slice(0,rc));
+  },[playerCount]);
+  const startGame=useCallback(()=>{
+    const rc=Math.min(roundCount,roundsBank.length);
+    setNames(cleanedNames);
+    setRoundOrder(shuffle([...Array(roundsBank.length).keys()]).slice(0,rc));
     setCurrentRound(0);setScores(Array(N).fill(0));setRoundHistory([]);setPhase("playing");
-    music.start();
-  }
+    startMusic();
+  },[roundCount,N,startMusic,roundsBank,cleanedNames]);
 
   useEffect(()=>{if(phase==="playing")setupRound();},[currentRound,phase,setupRound]);
   useEffect(()=>{if(step===0&&allDone){const t=setTimeout(()=>setStep(1),600);return()=>clearTimeout(t);}},[step,allDone]);
+  useEffect(()=>()=>{if(scorePopTimeoutRef.current)clearTimeout(scorePopTimeoutRef.current);},[]);
+  useEffect(()=>{toggleMusicMute(muted);},[muted,toggleMusicMute]);
+  useEffect(()=>{if(canUseStorage())window.localStorage.setItem(STORAGE_KEYS.playerCount,String(playerCount));},[playerCount]);
+  useEffect(()=>{if(canUseStorage())window.localStorage.setItem(STORAGE_KEYS.roundCount,String(roundCount));},[roundCount]);
+  useEffect(()=>{if(canUseStorage())window.localStorage.setItem(STORAGE_KEYS.muted,muted?"1":"0");},[muted]);
+  useEffect(()=>{if(roundCount>maxRounds)setRoundCount(maxRounds);},[roundCount,maxRounds]);
 
-  function cycleAvatar(i){setAvatars(a=>{const n=[...a];n[i]=(n[i]+1)%AVATARS.length;return n;});}
-  function openCard(pi){if(anyOpen)return;setCardStates(p=>p.map((s,i)=>i===pi?"open":s==="done"?"done":"locked"));}
-  function doneCard(pi){setCardStates(p=>p.map((s,i)=>i===pi?"done":s==="locked"?"waiting":s));}
-  function addPt(i){setScores(s=>{const n=[...s];n[i]++;return n;});setScorePop(i);setTimeout(()=>setScorePop(-1),300);}
-  function rmPt(i){setScores(s=>{const n=[...s];n[i]=Math.max(0,n[i]-1);return n;});setScorePop(i);setTimeout(()=>setScorePop(-1),300);}
-  function nextRound(){setRoundHistory(h=>[...h,{round:currentRound,scores:[...scores]}]);if(currentRound+1>=totalRounds)setPhase("result");else{setCurrentRound(r=>r+1);setPhase("playing");}}
-  function goBack(){if(step>0){setStep(s=>s-1);setShowCountdown(false);setRevealReady(false);return;}if(roundHistory.length>0){const p=roundHistory[roundHistory.length-1];setRoundHistory(h=>h.slice(0,-1));setCurrentRound(p.round);setScores(p.scores);setPhase("playing");}else setPhase("names");}
-  function quit(){setPaused(false);music.stop();setPhase("menu");}
+  const cycleAvatar=useCallback((i)=>{
+    setAvatars((current)=>{
+      const next=[...current];
+      const taken=new Set(next.filter((_,idx)=>idx!==i));
+      let candidate=next[i];
+      for(let count=0;count<AVATARS.length;count++){
+        candidate=(candidate+1)%AVATARS.length;
+        if(!taken.has(candidate)){next[i]=candidate;break;}
+      }
+      return next;
+    });
+  },[]);
+  const randomizeAvatars=useCallback(()=>{
+    setAvatars(shuffle([...Array(AVATARS.length).keys()]).slice(0,playerCount));
+  },[playerCount]);
+  const openCard=useCallback((pi)=>{setCardStates(prev=>{if(prev.some(s=>s==="open")||prev[pi]!=="waiting")return prev;return prev.map((s,i)=>i===pi?"open":s==="done"?"done":"locked");});},[]);
+  const doneCard=useCallback((pi)=>{setCardStates(prev=>prev.map((s,i)=>i===pi?"done":s==="locked"?"waiting":s));},[]);
+  const flashScore=useCallback((i)=>{setScorePop(i);if(scorePopTimeoutRef.current)clearTimeout(scorePopTimeoutRef.current);scorePopTimeoutRef.current=setTimeout(()=>setScorePop(-1),300);},[]);
+  const addPt=useCallback((i)=>{setScores(s=>{const n=[...s];n[i]++;return n;});flashScore(i);},[flashScore]);
+  const rmPt=useCallback((i)=>{setScores(s=>{const n=[...s];n[i]=Math.max(0,n[i]-1);return n;});flashScore(i);},[flashScore]);
+  const nextRound=useCallback(()=>{setRoundHistory(h=>[...h,{round:currentRound,scores:[...scores]}]);if(currentRound+1>=totalRounds)setPhase("result");else{setCurrentRound(r=>r+1);setPhase("playing");}},[currentRound,scores,totalRounds]);
+  const goBack=useCallback(()=>{if(step>0){setStep(s=>s-1);setShowCountdown(false);setRevealReady(false);return;}if(roundHistory.length>0){const p=roundHistory[roundHistory.length-1];setRoundHistory(h=>h.slice(0,-1));setCurrentRound(p.round);setScores(p.scores);setPhase("playing");}else setPhase("names");},[step,roundHistory]);
+  const quit=useCallback(()=>{setPaused(false);stopMusic();setPhase("menu");},[stopMusic]);
 
-  const rd=roundOrder.length>0&&currentRound<roundOrder.length?ROUNDS[roundOrder[currentRound]]:null;
-  const ok=names.length>=3&&names.every(n=>n.trim().length>0);
-  function vs(pi){const s=cardStates[pi];if(s==="open"||s==="done")return s;if(anyOpen)return"locked";return"waiting";}
-  const gc=N<=4?2:N<=6?3:4;
+  const rd=useMemo(()=>roundOrder.length>0&&currentRound<roundOrder.length?roundsBank[roundOrder[currentRound]]:null,[roundOrder,currentRound,roundsBank]);
+  const ok=useMemo(()=>names.length>=3&&cleanedNames.every(n=>n.length>0)&&!hasDuplicateNames,[names,cleanedNames,hasDuplicateNames]);
+  const vs=useCallback((pi)=>{const s=cardStates[pi];if(s==="open"||s==="done")return s;if(anyOpen)return"locked";return"waiting";},[cardStates,anyOpen]);
+  const gc=useMemo(()=>N<=4?2:N<=6?3:4,[N]);
+  const sortedScores=useMemo(()=>scores.map((s,i)=>({score:s,index:i})).sort((a,b)=>b.score-a.score),[scores]);
 
   /* ─── MENU ─── */
   if(phase==="menu"){return <div style={{...pgStyle,justifyContent:"center",padding:24}}>
@@ -362,9 +449,10 @@ export default function ImpostorGame(){
           <div style={{display:"flex",gap:6}}>{[3,4,5,6,7,8].map(n=><Btn key={n} bg={playerCount===n?"#F28B82":W} color={playerCount===n?"#fff":MID} shadow={playerCount===n?"#C0635E":BD} style={{width:42,height:42,padding:0,fontSize:18,borderRadius:12}} onClick={()=>setPlayerCount(n)}>{n}</Btn>)}</div>
         </div>
         <div style={{textAlign:"center"}}><p style={{color:MID,fontSize:13,marginBottom:8,fontFamily:DF,fontWeight:600}}>Rodadas</p>
-          <div style={{display:"flex",gap:6}}>{[5,10,15,20].map(n=><Btn key={n} bg={roundCount===n?"#81BFDA":W} color={roundCount===n?"#fff":MID} shadow={roundCount===n?"#5A8FA8":BD} style={{width:42,height:42,padding:0,fontSize:16,borderRadius:12}} onClick={()=>setRoundCount(n)}>{n}</Btn>)}</div>
+          <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap"}}>{roundChoices.map(n=><Btn key={n} bg={roundCount===n?"#81BFDA":W} color={roundCount===n?"#fff":MID} shadow={roundCount===n?"#5A8FA8":BD} style={{width:42,height:42,padding:0,fontSize:16,borderRadius:12}} onClick={()=>setRoundCount(n)}>{n}</Btn>)}</div>
         </div>
       </div>
+      <p style={{color:LT,fontSize:11,margin:"-8px 0 16px"}}>{maxRounds} perguntas disponiveis no codigo</p>
       <Btn bg="#F28B82" color="#fff" shadow="#C0635E" style={{padding:"16px 48px",fontSize:19}} onClick={goToNames}>Escolher Nomes →</Btn>
     </div>
   </div>;}
@@ -376,36 +464,37 @@ export default function ImpostorGame(){
       <Btn bg={W} color={MID} shadow={BD} style={{padding:"8px 16px",fontSize:13,marginBottom:24}} onClick={()=>setPhase("menu")}>← Menu</Btn>
       <h2 style={{fontFamily:DF,fontSize:26,margin:"0 0 6px"}}>Quem vai jogar?</h2>
       <p style={{color:MID,fontSize:13,margin:"0 0 6px",fontWeight:600}}>{names.length} jogadores · {roundCount} rodadas</p>
-      <p style={{color:LT,fontSize:11,margin:"0 0 20px"}}>Toque no avatar para trocar</p>
+      <p style={{color:LT,fontSize:11,margin:"0 0 8px"}}>Toque no avatar para trocar</p>
+      <Btn bg={W} color={MID} shadow={BD} style={{padding:"7px 12px",fontSize:12,marginBottom:16}} onClick={randomizeAvatars}>Aleatorizar Avatares</Btn>
       <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:28}}>
         {names.map((name,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,background:W,borderRadius:14,padding:"6px 8px",border:`2px solid ${pc(i)}`,boxShadow:`0 3px 0 ${pcd(i)}`,animation:"fadeUp 0.4s ease",animationDelay:`${i*0.06}s`,animationFillMode:"both"}}>
           <div onClick={()=>cycleAvatar(i)} style={{cursor:"pointer",borderRadius:"50%",border:`2px solid ${pcd(i)}`,overflow:"hidden",flexShrink:0,transition:"transform 0.15s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
             <AvatarSVG index={avatars[i]} color={pc(i)} size={40}/>
           </div>
-          <input type="text" value={name} onChange={e=>{const next=[...names];next[i]=e.target.value;setNames(next);}} placeholder={`Jogador ${i+1}`} maxLength={16}
+          <input type="text" value={name} onChange={e=>{const next=[...names];next[i]=e.target.value;setNames(next);}} onKeyDown={e=>{if(e.key==="Enter"&&ok)startGame();}} placeholder={`Jogador ${i+1}`} maxLength={16}
             style={{flex:1,background:"transparent",border:"none",color:INK,fontSize:16,fontWeight:700,fontFamily:BF,padding:"10px 6px",borderRadius:8}}/>
         </div>)}
       </div>
+      {!ok&&<p style={{color:"#C0635E",fontSize:12,fontWeight:700,margin:"0 0 12px"}}>{nameValidationMsg}</p>}
       <Btn bg={ok?"#A8D5BA":"#E8DDD0"} color={ok?"#fff":LT} shadow={ok?"#6EA586":"#D5CBBD"} style={{padding:"14px 40px",fontSize:17,cursor:ok?"pointer":"not-allowed"}} onClick={ok?startGame:undefined}>Iniciar Partida →</Btn>
     </div>
   </div>;}
 
   /* ─── PLAYING ─── */
   if(phase==="playing"&&rd){
-    const dc=cardStates.filter(s=>s==="done").length;
     return <div style={{...pgStyle,padding:"0 16px 32px"}}>
       <Fonts/><GlobalCSS/>
       {paused&&<PauseOverlay scores={scores} names={names} avatars={avatars} onResume={()=>setPaused(false)} onQuit={quit} muted={muted} onToggleMute={toggleMute}/>}
-      <TopBar onPause={()=>setPaused(true)} onBack={goBack} backLabel={step>0?"Voltar":roundHistory.length>0?"Voltar":"Menu"} roundInfo={`${currentRound+1}/${totalRounds}`} roundNum={currentRound} totalRounds={totalRounds} muted={muted} onToggleMute={toggleMute}/>
+      <TopBar onPause={()=>setPaused(true)} onBack={goBack} backLabel={step>0?"Voltar":roundHistory.length>0?"Voltar":"Menu"} roundInfo={`${currentRound+1}/${totalRounds}`} roundNum={currentRound+1} totalRounds={totalRounds} muted={muted} onToggleMute={toggleMute}/>
       <StepBar currentStep={step}/>
 
       {step===0&&<div style={{width:"100%",maxWidth:720,display:"flex",flexDirection:"column",alignItems:"center"}}>
-        <h2 style={{fontFamily:DF,fontSize:18,fontWeight:600,margin:"0 0 4px",textAlign:"center",color:anyOpen?pcd(cardStates.findIndex(s=>s==="open")):INK,transition:"color 0.3s"}}>
-          {anyOpen?`${names[cardStates.findIndex(s=>s==="open")]}, leia em segredo`:allDone?"Todos leram!":dc===0?"Passe o celular — cada um vira seu card":`${dc}/${N} leram · Passe para o próximo`}
+        <h2 style={{fontFamily:DF,fontSize:18,fontWeight:600,margin:"0 0 4px",textAlign:"center",color:anyOpen?pcd(openCardIndex):INK,transition:"color 0.3s"}}>
+          {anyOpen?`${names[openCardIndex]}, leia em segredo`:allDone?"Todos leram!":doneCards===0?"Passe o celular — cada um vira seu card":`${doneCards}/${N} leram · Passe para o próximo`}
         </h2>
-        {!anyOpen&&dc===0&&<p style={{color:LT,fontSize:12,margin:"4px 0 12px",fontWeight:600}}>Só um card abre por vez</p>}
+        {!anyOpen&&doneCards===0&&<p style={{color:LT,fontSize:12,margin:"4px 0 12px",fontWeight:600}}>Só um card abre por vez</p>}
         <div style={{display:"grid",gridTemplateColumns:`repeat(${gc},1fr)`,gap:12,width:"100%",justifyItems:"center",marginTop:10}}>
-          {cardOrder.map((pi,idx)=><Card key={pi} name={names[pi]} avatar={avatars[pi]} color={pc(pi)} colorDark={pcd(pi)} question={pi===impIdx?rd.impostor:rd.normal} state={vs(pi)} onOpen={()=>openCard(pi)} onDone={()=>doneCard(pi)} delay={idx*0.08}/>)}
+          {cardOrder.map((pi,idx)=><Card key={pi} playerIndex={pi} name={names[pi]} avatar={avatars[pi]} color={pc(pi)} colorDark={pcd(pi)} question={pi===impIdx?rd.impostor:rd.normal} state={vs(pi)} onOpen={openCard} onDone={doneCard} delay={idx*0.08}/>)}
         </div>
         <div style={{display:"flex",gap:8,marginTop:18}}>{Array(N).fill(0).map((_,i)=><div key={i} style={{width:10,height:10,borderRadius:"50%",background:cardStates[i]==="done"?"#A8D5BA":"#E8DDD0",border:cardStates[i]==="done"?"2px solid #6EA586":"2px solid #D5CBBD",transition:"all 0.3s"}}/>)}</div>
       </div>}
@@ -465,13 +554,12 @@ export default function ImpostorGame(){
 
   /* ─── RESULT ─── */
   if(phase==="result"){
-    const sorted=scores.map((s,i)=>({score:s,index:i})).sort((a,b)=>b.score-a.score);
     return <div style={{...pgStyle,justifyContent:"center",padding:24}}>
       <Fonts/><GlobalCSS/><Confetti/>
       <div style={{textAlign:"center",maxWidth:400,animation:"fadeUp 0.5s ease",position:"relative",zIndex:1}}>
         <div style={{background:W,borderRadius:24,padding:"28px 22px",marginBottom:24,border:`3px solid ${BD}`,boxShadow:`0 6px 0 ${BD}`}}>
           <h2 style={{fontFamily:DF,fontSize:28,margin:"0 0 20px",color:INK}}>Fim de Jogo!</h2>
-          {sorted.map(({score,index},rank)=><div key={index} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",borderRadius:14,marginBottom:6,background:rank===0?`${pc(index)}30`:CR,border:rank===0?`2px solid ${pc(index)}`:`2px solid ${BD}`,boxShadow:rank===0?`0 3px 0 ${pcd(index)}`:"none",animation:"fadeUp 0.4s ease",animationDelay:`${rank*0.1}s`,animationFillMode:"both"}}>
+          {sortedScores.map(({score,index},rank)=><div key={index} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",borderRadius:14,marginBottom:6,background:rank===0?`${pc(index)}30`:CR,border:rank===0?`2px solid ${pc(index)}`:`2px solid ${BD}`,boxShadow:rank===0?`0 3px 0 ${pcd(index)}`:"none",animation:"fadeUp 0.4s ease",animationDelay:`${rank*0.1}s`,animationFillMode:"both"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:20,minWidth:24}}>{rank<3?["🥇","🥈","🥉"][rank]:""}</span>
               <AvatarSVG index={avatars[index]} color={pc(index)} size={30}/>
